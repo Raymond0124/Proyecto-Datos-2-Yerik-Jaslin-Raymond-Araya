@@ -1,0 +1,6 @@
+#ifndef PROYECTO_DATOS_2_LIBRARY_H
+#define PROYECTO_DATOS_2_LIBRARY_H
+
+void hello();
+
+#endif // PROYECTO_DATOS_2_LIBRARY_H
