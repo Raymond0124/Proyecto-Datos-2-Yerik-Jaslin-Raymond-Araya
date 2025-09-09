@@ -1,25 +1,32 @@
-// mainwindow.h
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTcpServer>
-#include <QTcpSocket>
-#include <QTableWidget>
-#include <QtCharts/QChartView>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QChart>
-#include <QtCharts/QValueAxis>
 #include <QTabWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QLabel>
-#include <QListWidget>
 #include <QProgressBar>
-#include <QJsonDocument>
+#include <QListWidget>
+#include <QTableWidget>
+#include <QTimer>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QTimer>
+#include <QJsonValue>
+#include <QHeaderView>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QChart>
+#include <QtCharts/QChartView>
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QBarSeries>
+#include <QtCharts/QBarSet>
+#include <QtCharts/QBarCategoryAxis>
+#include <QtCharts/QPieSeries>
+#include <QtCharts/QPieSlice>
+
+#include "../memtracker.h"
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
 
 
 
@@ -31,6 +38,10 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    void incrementTime();
+    void updateUIFromJson(const QJsonObject &json);
+
 private:
     QTabWidget *tabs;
 
@@ -39,31 +50,30 @@ private:
     QLabel *metricasLabel;
     QProgressBar *usoMemoriaBar;
     QProgressBar *leaksBar;
-    QChartView *chartView;
+    QListWidget *resumenList;
     QLineSeries *memorySeries;
     QChart *chart;
+    QChartView *chartView;
     QValueAxis *axisX;
     QValueAxis *axisY;
-    QListWidget *resumenList;
-    QTimer *timeCounter;
     int currentTime;
 
     // Mapa de memoria
     QWidget *mapaMemoriaTab;
     QTableWidget *memoriaTable;
 
-    // Socket
-    QTcpServer *server;
+    QTimer *timeCounter;
+
+
+
 
     void setupVistaGeneral();
     void setupMapaMemoria();
+    void setupMemoryTab();
+    void setupLeaksTab();
     void setupSocket();
-
-private slots:
     void newConnection();
     void readData();
-    void updateUIFromJson(const QJsonObject &json);
-    void incrementTime();
 };
 
 #endif // MAINWINDOW_H

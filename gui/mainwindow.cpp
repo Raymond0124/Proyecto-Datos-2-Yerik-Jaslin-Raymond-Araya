@@ -1,10 +1,11 @@
-// mainwindow.cpp
 #include "mainwindow.h"
-#include <QHeaderView>
-#include <QDebug>
-#include <QHostAddress>
-#include <QTableWidgetItem>
-#include <QPainter>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QRandomGenerator>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonValue>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), currentTime(0)
@@ -17,20 +18,20 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupVistaGeneral();
     setupMapaMemoria();
+    setupMemoryTab();
+    setupLeaksTab();
     setupSocket();
 
-    // Timer para actualizar el eje X del gráfico cada segundo
+
     timeCounter = new QTimer(this);
     connect(timeCounter, &QTimer::timeout, this, &MainWindow::incrementTime);
-    timeCounter->start(1000); // 1 segundo
+    timeCounter->start(1000);
 }
 
 MainWindow::~MainWindow()
 {
-    if (server && server->isListening()) {
-        server->close();
-    }
 }
+
 
 void MainWindow::setupVistaGeneral()
 {
@@ -39,21 +40,15 @@ void MainWindow::setupVistaGeneral()
     vgLayout->setSpacing(10);
     vgLayout->setContentsMargins(10, 10, 10, 10);
 
-    // Métricas generales
+
     metricasLabel = new QLabel("Esperando datos del memory profiler...", this);
     metricasLabel->setStyleSheet(
-        "QLabel {"
-        "   background-color: #f0f0f0;"
-        "   border: 1px solid #cccccc;"
-        "   padding: 10px;"
-        "   font-weight: bold;"
-        "   font-size: 12px;"
-        "}"
+        "QLabel { background-color: #f0f0f0; border: 1px solid #cccccc; padding: 10px; font-weight: bold; font-size: 12px; }"
     );
     metricasLabel->setFixedHeight(60);
     vgLayout->addWidget(metricasLabel);
 
-    // Barras de progreso
+
     QHBoxLayout *barsLayout = new QHBoxLayout();
 
     usoMemoriaBar = new QProgressBar();
@@ -73,11 +68,10 @@ void MainWindow::setupVistaGeneral()
     memorySeries->setName("Uso de Memoria");
 
     chart = new QChart();
-    chart->addSeries(memorySeries);
+
     chart->setTitle("Línea de Tiempo - Uso de Memoria");
     chart->setAnimationOptions(QChart::SeriesAnimations);
 
-    // Configurar ejes
     axisX = new QValueAxis();
     axisX->setTitleText("Tiempo (segundos)");
     axisX->setLabelFormat("%d");
@@ -95,7 +89,6 @@ void MainWindow::setupVistaGeneral()
 
     chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
-    chartView->setMinimumHeight(300);
     vgLayout->addWidget(chartView);
 
     // Resumen top 3 archivos
@@ -104,25 +97,12 @@ void MainWindow::setupVistaGeneral()
     vgLayout->addWidget(resumenTitulo);
 
     resumenList = new QListWidget();
-    resumenList->setStyleSheet(
-        "QListWidget {"
-        "   background-color: #e3f2fd;"
-        "   border: 1px solid #90caf9;"
-        "   border-radius: 5px;"
-        "}"
-        "QListWidget::item {"
-        "   padding: 5px;"
-        "   border-bottom: 1px solid #bbdefb;"
-        "}"
-        "QListWidget::item:hover {"
-        "   background-color: #bbdefb;"
-        "}"
-    );
     resumenList->setMaximumHeight(120);
     vgLayout->addWidget(resumenList);
 
     tabs->addTab(vistaGeneralTab, "Vista General");
 }
+
 
 void MainWindow::setupMapaMemoria()
 {
@@ -134,14 +114,14 @@ void MainWindow::setupMapaMemoria()
     mapaTitulo->setStyleSheet("font-weight: bold; font-size: 16px; padding: 10px;");
     mmLayout->addWidget(mapaTitulo);
 
+    // Crear tabla con 4 columnas
     memoriaTable = new QTableWidget(0, 4, this);
-    memoriaTable->setHorizontalHeaderLabels(QStringList() << "Dirección" << "Tipo de Dato" << "Tamaño (bytes)" << "Estado");
+    memoriaTable->setHorizontalHeaderLabels(QStringList()
+        << "Dirección" << "Tipo de Dato" << "Tamaño (bytes)" << "Estado");
 
-    // Configurar tabla
+    // Encabezados azules estilo la captura
     memoriaTable->horizontalHeader()->setStretchLastSection(true);
-    memoriaTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    memoriaTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    memoriaTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    memoriaTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
     memoriaTable->setAlternatingRowColors(true);
     memoriaTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -149,18 +129,21 @@ void MainWindow::setupMapaMemoria()
     memoriaTable->setSortingEnabled(true);
     memoriaTable->verticalHeader()->setVisible(false);
 
+    // Estilo más limpio como en tu captura
     memoriaTable->setStyleSheet(
         "QTableWidget {"
         "   background-color: white;"
         "   gridline-color: #d0d0d0;"
         "   selection-background-color: #4CAF50;"
+        "   border: none;"
         "}"
         "QHeaderView::section {"
         "   background-color: #2196F3;"
         "   color: white;"
         "   padding: 8px;"
-        "   border: 1px solid #1976D2;"
+        "   border: none;"
         "   font-weight: bold;"
+        "   font-size: 12px;"
         "}"
     );
 
@@ -168,134 +151,125 @@ void MainWindow::setupMapaMemoria()
     tabs->addTab(mapaMemoriaTab, "Mapa de Memoria");
 }
 
-void MainWindow::setupSocket()
+
+// ------------------ Pestaña: Asignación por archivo ------------------
+void MainWindow::setupMemoryTab()
 {
-    server = new QTcpServer(this);
-    connect(server, &QTcpServer::newConnection, this, &MainWindow::newConnection);
+    QWidget *memoryTab = new QWidget();
+    QVBoxLayout *layout = new QVBoxLayout(memoryTab);
 
-    if (!server->listen(QHostAddress::Any, 5000)) {
-        qDebug() << "Error al iniciar servidor:" << server->errorString();
-    } else {
-        qDebug() << "Servidor iniciado en puerto 5000";
-    }
-}
+    QBarSeries *series = new QBarSeries();
+    QStringList categories;
 
-void MainWindow::newConnection()
-{
-    QTcpSocket *clientSocket = server->nextPendingConnection();
-    connect(clientSocket, &QTcpSocket::readyRead, this, &MainWindow::readData);
-    connect(clientSocket, &QTcpSocket::disconnected, clientSocket, &QTcpSocket::deleteLater);
-    qDebug() << "Nueva conexión establecida";
-}
-
-void MainWindow::readData()
-{
-    QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
-    if (!client) return;
-
-    QByteArray data = client->readAll();
-    qDebug() << "Datos recibidos:" << data;
-
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-
-    if (error.error != QJsonParseError::NoError) {
-        qDebug() << "Error parsing JSON:" << error.errorString();
-        return;
+    for (const auto &p : fileAllocBytes) {
+        const std::string &file = p.first;
+        size_t size = p.second;
+        QBarSet *set = new QBarSet(QString::fromStdString(file));
+        *set << static_cast<int>(size);
+        series->append(set);
+        categories << QString::fromStdString(file);
     }
 
-    if (doc.isObject()) {
-        QJsonObject json = doc.object();
-        QMetaObject::invokeMethod(this, "updateUIFromJson", Qt::QueuedConnection,
-                                  Q_ARG(QJsonObject, json));
-    }
+    QChart *chart = new QChart();
+    chart->addSeries(series);
+    chart->setTitle("Asignaciones de Memoria por Archivo");
+
+    QBarCategoryAxis *axisX_cat = new QBarCategoryAxis();
+    axisX_cat->append(categories);
+    QValueAxis *axisY_val = new QValueAxis();
+    axisY_val->setTitleText("Bytes");
+
+    chart->addAxis(axisX_cat, Qt::AlignBottom);
+    chart->addAxis(axisY_val, Qt::AlignLeft);
+
+    series->attachAxis(axisX_cat);
+    series->attachAxis(axisY_val);
+
+    QChartView *chartViewLocal = new QChartView(chart);
+    chartViewLocal->setRenderHint(QPainter::Antialiasing);
+
+    layout->addWidget(chartViewLocal);
+    tabs->addTab(memoryTab, "Asignación por Archivo");
 }
+
+// ------------------ Pestaña: Memory Leaks ------------------
+void MainWindow::setupLeaksTab()
+{
+    QWidget *leaksTab = new QWidget();
+    QVBoxLayout *layout = new QVBoxLayout(leaksTab);
+
+    std::map<std::string, size_t> leaksByFile;
+    for (const auto &entry : allocations) {
+        const AllocationInfo &info = entry.second;
+        leaksByFile[info.file] += info.size;
+    }
+
+    QPieSeries *series = new QPieSeries();
+    for (const auto &p : leaksByFile) {
+        series->append(QString::fromStdString(p.first), static_cast<qreal>(p.second));
+    }
+
+    QChart *chart = new QChart();
+    chart->addSeries(series);
+    chart->setTitle("Distribución de Memory Leaks");
+
+    QChartView *chartViewLocal = new QChartView(chart);
+    chartViewLocal->setRenderHint(QPainter::Antialiasing);
+
+    layout->addWidget(chartViewLocal);
+    tabs->addTab(leaksTab, "Memory Leaks");
+}
+
 
 void MainWindow::updateUIFromJson(const QJsonObject &json)
 {
-    // Actualizar métricas generales
-    int usoMem = json["memoriaActual"].toInt();
-    int asignAct = json["asignacionesActivas"].toInt();
-    int leaks = json["memoryLeaksMB"].toInt();
-    int maxUso = json["usoMaximo"].toInt();
-    int totalAsig = json["totalAsignaciones"].toInt();
 
-    metricasLabel->setText(QString(
-        "Uso actual: %1 MB | Asignaciones activas: %2 | "
-        "Memory leaks: %3 MB | Uso máximo: %4 MB | Total asignaciones: %5")
-        .arg(usoMem).arg(asignAct).arg(leaks).arg(maxUso).arg(totalAsig));
+    int memoriaActual = json["memoriaActual"].toInt();
+    int leaks = json["leaks"].toInt();
+    metricasLabel->setText(QString("Memoria Actual: %1 MB | Leaks: %2 MB").arg(memoriaActual).arg(leaks));
 
-    // Actualizar barras de progreso
-    if (maxUso > 0) {
-        usoMemoriaBar->setMaximum(maxUso);
-        usoMemoriaBar->setValue(usoMem);
-        leaksBar->setMaximum(maxUso);
-        leaksBar->setValue(leaks);
-    }
+    usoMemoriaBar->setValue(memoriaActual);
+    leaksBar->setValue(leaks);
 
-    // Actualizar gráfico de línea de tiempo
-    memorySeries->append(currentTime, usoMem);
 
-    // Mantener ventana deslizante de 60 segundos
-    if (memorySeries->count() > 60) {
-        memorySeries->remove(0);
-        axisX->setRange(currentTime - 59, currentTime + 1);
-    }
+    currentTime++;
+    axisX->setRange(std::max(0, currentTime - 60), currentTime);
+    memorySeries->append(currentTime, memoriaActual);
 
-    // Ajustar escala Y si es necesario
-    if (usoMem > axisY->max()) {
-        axisY->setMax(usoMem + 10);
-    }
 
-    // Actualizar top 3 archivos
     resumenList->clear();
-    QJsonArray top = json["topArchivos"].toArray();
-    for (int i = 0; i < top.size() && i < 3; ++i) {
-        QJsonObject obj = top[i].toObject();
-        QString texto = QString("📁 %1 - %2 asignaciones - %3 MB")
-                       .arg(obj["archivo"].toString())
-                       .arg(obj["asignaciones"].toInt())
-                       .arg(obj["mb"].toInt());
-        resumenList->addItem(texto);
+    QJsonArray topArchivos = json["topArchivos"].toArray();
+    for (auto val : topArchivos) {
+        QJsonObject obj = val.toObject();
+        QString file = obj["file"].toString();
+        int size = obj["size"].toInt();
+        resumenList->addItem(QString("%1 - %2 bytes").arg(file).arg(size));
     }
 
     // Actualizar mapa de memoria
-    QJsonArray bloques = json["bloquesMemoria"].toArray();
-    memoriaTable->setRowCount(bloques.size());
-
-    for (int i = 0; i < bloques.size(); ++i) {
-        QJsonObject b = bloques[i].toObject();
-
-        memoriaTable->setItem(i, 0, new QTableWidgetItem(b["direccion"].toString()));
-        memoriaTable->setItem(i, 1, new QTableWidgetItem(b["tipo"].toString()));
-        memoriaTable->setItem(i, 2, new QTableWidgetItem(QString::number(b["tamano"].toInt())));
-
-        QString estado = b["estado"].toString();
-        QTableWidgetItem *estadoItem = new QTableWidgetItem(estado);
-
-        // Colores para diferentes estados
-        if (estado == "Libre") {
-            estadoItem->setBackground(QColor("#4CAF50")); // Verde
-            estadoItem->setForeground(QColor("white"));
-        } else if (estado == "Usado") {
-            estadoItem->setBackground(QColor("#f44336")); // Rojo
-            estadoItem->setForeground(QColor("white"));
-        } else if (estado == "Leak") {
-            estadoItem->setBackground(QColor("#FF9800")); // Naranja
-            estadoItem->setForeground(QColor("white"));
-        } else {
-            estadoItem->setBackground(QColor("#FFC107")); // Amarillo
-            estadoItem->setForeground(QColor("black"));
-        }
-
-        memoriaTable->setItem(i, 3, estadoItem);
+    memoriaTable->setRowCount(0);
+    QJsonArray bloques = json["bloques"].toArray();
+    int row = 0;
+    for (auto val : bloques) {
+        QJsonObject obj = val.toObject();
+        memoriaTable->insertRow(row);
+        memoriaTable->setItem(row, 0, new QTableWidgetItem(obj["direccion"].toString()));
+        memoriaTable->setItem(row, 1, new QTableWidgetItem(QString::number(obj["tam"].toInt())));
+        memoriaTable->setItem(row, 2, new QTableWidgetItem(obj["archivo"].toString()));
+        row++;
     }
-
-    // Ajustar columnas
-    memoriaTable->resizeColumnsToContents();
 }
+
 
 void MainWindow::incrementTime()
 {
     currentTime++;
+    axisX->setRange(std::max(0, currentTime - 60), currentTime);
+    int randomValue = QRandomGenerator::global()->bounded(100);
+    memorySeries->append(currentTime, randomValue);
 }
+
+
+void MainWindow::setupSocket() {}
+void MainWindow::newConnection() {}
+void MainWindow::readData() {}
