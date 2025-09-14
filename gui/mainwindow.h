@@ -3,31 +3,21 @@
 
 #include <QMainWindow>
 #include <QTabWidget>
+#include <QWidget>
 #include <QLabel>
 #include <QProgressBar>
 #include <QListWidget>
-#include <QTableWidget>
-#include <QTimer>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QJsonValue>
-#include <QHeaderView>
-#include <QtCharts/QLineSeries>
 #include <QtCharts/QChart>
 #include <QtCharts/QChartView>
+#include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
-#include <QtCharts/QBarSeries>
-#include <QtCharts/QBarSet>
-#include <QtCharts/QBarCategoryAxis>
-#include <QtCharts/QPieSeries>
-#include <QtCharts/QPieSlice>
-
-#include "../memtracker.h"
-
-QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
-QT_END_NAMESPACE
-
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QTimer>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QHeaderView>
+#include <QJsonObject>
 
 
 class MainWindow : public QMainWindow
@@ -35,45 +25,53 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-private slots:
-    void incrementTime();
-    void updateUIFromJson(const QJsonObject &json);
-
 private:
+    // --- Tabs ---
     QTabWidget *tabs;
-
-    // Vista general
     QWidget *vistaGeneralTab;
+    QWidget *mapaMemoriaTab;
+    QWidget *memoryTab;
+    QWidget *leaksTab;
+
+    // --- Vista General ---
     QLabel *metricasLabel;
     QProgressBar *usoMemoriaBar;
     QProgressBar *leaksBar;
-    QListWidget *resumenList;
     QLineSeries *memorySeries;
     QChart *chart;
     QChartView *chartView;
     QValueAxis *axisX;
     QValueAxis *axisY;
-    int currentTime;
+    QListWidget *resumenList;
 
-    // Mapa de memoria
-    QWidget *mapaMemoriaTab;
+    // --- Mapa de Memoria ---
     QTableWidget *memoriaTable;
 
+    // --- Socket ---
+    QTcpServer *server;
+    QTcpSocket *clientSocket;
+
+    // --- Timer ---
     QTimer *timeCounter;
+    int currentTime;
 
-
-
-
+    // --- Setup Tabs ---
     void setupVistaGeneral();
     void setupMapaMemoria();
     void setupMemoryTab();
     void setupLeaksTab();
+
+    // --- Socket ---
     void setupSocket();
     void newConnection();
     void readData();
+
+    // --- Funciones auxiliares ---
+    void incrementTime();
+    void updateUIFromJson(const QJsonObject &json);
 };
 
 #endif // MAINWINDOW_H

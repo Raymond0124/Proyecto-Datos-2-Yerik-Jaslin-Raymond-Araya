@@ -1,79 +1,67 @@
 #include "memtracker.h"
+#include "library.h"  // Trae AllocationInfo, allocations, fileAllocCount, fileAllocBytes, allocMutex
+#include <QJsonDocument>
+#include <thread>
 #include <iostream>
-#include <cstdlib>   // malloc, free
-#include <new>       // std::bad_alloc
 
-// Definiciones de las variables globales
-std::map<void*, AllocationInfo> allocations;
-std::map<std::string, size_t> fileAllocCount;
-std::map<std::string, size_t> fileAllocBytes;
-std::mutex allocMutex;
+// Variables de socket
+std::atomic<bool> socketConnected(false);
+QTcpSocket* clientSocket = nullptr;
 
-// Sobrecarga de operator new
-void* operator new(size_t size, const char* file, int line) {
-    void* ptr = malloc(size);
-    if (!ptr) throw std::bad_alloc();
-
-    std::lock_guard<std::mutex> lock(allocMutex);
-    allocations[ptr] = AllocationInfo(size, file, line, std::chrono::steady_clock::now());
-    fileAllocCount[file]++;
-    fileAllocBytes[file] += size;
-    return ptr;
-}
-
-// Sobrecarga de operator delete
-void operator delete(void* ptr) noexcept {
-    if (!ptr) return;
-    std::lock_guard<std::mutex> lock(allocMutex);
-    auto it = allocations.find(ptr);
-    if (it != allocations.end()) {
-        allocations.erase(it);
-    }
-    free(ptr);
-}
-
-// Reporte de asignaciones por archivo
-void printMemoryReport() {
-    std::cout << "\n=== Reporte de Asignaciones por Archivo ===\n";
-    for (auto& [file, count] : fileAllocCount) {
-        std::cout << "Archivo: " << file
-                  << " | Asignaciones: " << count
-                  << " | Memoria total: " << fileAllocBytes[file] << " bytes\n";
+// ---------------- Conexión socket ----------------
+void connectToGui(const std::string &host, int port) {
+    if (!clientSocket) clientSocket = new QTcpSocket();
+    clientSocket->connectToHost(QString::fromStdString(host), port);
+    socketConnected = clientSocket->waitForConnected(3000);
+    if (!socketConnected) {
+        std::cerr << "No se pudo conectar al GUI\n";
     }
 }
 
-// Reporte de memory leaks
-void printLeakReport() {
-    size_t totalLeaks = 0;
-    size_t biggestLeak = 0;
-    std::string biggestLeakFile;
-    std::map<std::string, size_t> leaksByFile;
+// ---------------- Enviar actualización ----------------
+void sendMemoryUpdate() {
+    if (!socketConnected || !clientSocket) return;
 
-    for (auto& [ptr, info] : allocations) {
-        totalLeaks += info.size;
-        leaksByFile[info.file] += info.size;
-        if (info.size > biggestLeak) {
-            biggestLeak = info.size;
-            biggestLeakFile = info.file;
+    QJsonObject json;
+    size_t memoriaActual = 0;
+
+    QJsonArray topArchivos;
+    QJsonArray bloques;
+
+    {
+        std::lock_guard<std::mutex> lock(allocMutex);
+
+        for (auto &[ptr, info] : allocations)
+            memoriaActual += info.size;
+
+        for (auto &[file, bytes] : fileAllocBytes) {
+            QJsonObject obj;
+            obj["file"] = QString::fromStdString(file);
+            obj["size"] = static_cast<int>(bytes);
+            topArchivos.append(obj);
+        }
+
+        for (auto &[ptr, info] : allocations) {
+            QJsonObject obj;
+            obj["direccion"] = QString("0x%1").arg((quintptr)ptr, QT_POINTER_SIZE * 2, 16, QLatin1Char('0'));
+            obj["tam"] = static_cast<int>(info.size);
+            obj["archivo"] = QString::fromStdString(info.file);
+            bloques.append(obj);
         }
     }
 
-    std::cout << "\n=== Reporte de Memory Leaks ===\n";
-    std::cout << "Total fugado: " << totalLeaks << " bytes\n";
-    std::cout << "Leak más grande: " << biggestLeak << " bytes en " << biggestLeakFile << "\n";
+    json["memoriaActual"] = static_cast<int>(memoriaActual);
+    json["leaks"] = static_cast<int>(memoriaActual);
+    json["topArchivos"] = topArchivos;
+    json["bloques"] = bloques;
 
-    std::string worstFile;
-    size_t worstLeak = 0;
-    for (auto& [file, size] : leaksByFile) {
-        if (size > worstLeak) {
-            worstLeak = size;
-            worstFile = file;
+    QByteArray data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    // Enviar en hilo aparte
+    std::thread([data]() {
+        if (clientSocket && socketConnected) {
+            clientSocket->write(data);
+            clientSocket->flush();
         }
-    }
-    std::cout << "Archivo con más leaks: " << worstFile << " (" << worstLeak << " bytes)\n";
-
-    size_t totalAllocated = 0;
-    for (auto& [_, b] : fileAllocBytes) totalAllocated += b;
-    double leakRate = totalAllocated ? (double)totalLeaks / (double)totalAllocated : 0.0;
-    std::cout << "Tasa de leaks: " << leakRate * 100 << "%\n";
+    }).detach();
 }
