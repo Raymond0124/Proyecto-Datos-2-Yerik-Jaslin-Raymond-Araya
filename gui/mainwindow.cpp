@@ -215,3 +215,4 @@ void MainWindow::updateUIFromJson(const QJsonObject &json)
         row++;
     }
 }
+//hola
