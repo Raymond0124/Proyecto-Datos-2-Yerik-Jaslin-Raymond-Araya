@@ -5,7 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QDebug>
-#include "memtracker.h"  // Ajusta la ruta según tu proyecto
+#include "library.h" // Ajusta la ruta según tu proyecto
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -166,16 +166,58 @@ void MainWindow::newConnection()
     qDebug() << "Cliente conectado";
 }
 
+void MainWindow::updateLeaksTab(const QJsonArray &leaks)
+{
+    // Limpia el tab
+    QVBoxLayout *layout = qobject_cast<QVBoxLayout*>(leaksTab->layout());
+    if (!layout) return;
+
+    // Elimina widgets previos
+    QLayoutItem *child;
+    while ((child = layout->takeAt(0)) != nullptr) {
+        delete child->widget();
+        delete child;
+    }
+
+    QLabel *title = new QLabel("Lista de Memory Leaks detectados:");
+    title->setStyleSheet("font-weight: bold; font-size: 14px;");
+    layout->addWidget(title);
+
+    QTableWidget *table = new QTableWidget(leaks.size(), 4, leaksTab);
+    table->setHorizontalHeaderLabels(QStringList() << "Dirección" << "Tamaño" << "Archivo" << "Línea");
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    int row = 0;
+    for (auto val : leaks) {
+        QJsonObject leak = val.toObject();
+        table->setItem(row, 0, new QTableWidgetItem(leak["direccion"].toString()));
+        table->setItem(row, 1, new QTableWidgetItem(QString::number(leak["tamano"].toInt())));
+        table->setItem(row, 2, new QTableWidgetItem(leak["archivo"].toString()));
+        table->setItem(row, 3, new QTableWidgetItem(QString::number(leak["linea"].toInt())));
+        row++;
+    }
+
+    layout->addWidget(table);
+}
 void MainWindow::readData()
 {
-    if(!clientSocket) return;
+    if (!clientSocket) return;
 
     QByteArray data = clientSocket->readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
-    if(doc.isObject()) {
-        updateUIFromJson(doc.object());
+    if (!doc.isObject()) return;
+
+    QJsonObject obj = doc.object();
+    QString type = obj["type"].toString("memory");
+
+    if (type == "memory") {
+        updateUIFromJson(obj);
+    } else if (type == "leaks") {
+        updateLeaksTab(obj["data"].toArray());
     }
 }
+
 
 void MainWindow::updateUIFromJson(const QJsonObject &json)
 {
@@ -216,3 +258,5 @@ void MainWindow::updateUIFromJson(const QJsonObject &json)
     }
 }
 //hola
+
+

@@ -7,7 +7,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Ruta a Qt
-set(CMAKE_PREFIX_PATH "C:/Users/raymo/Desktop/QT/6.9.2/mingw_64")
+set(CMAKE_PREFIX_PATH "C:/Qt/6.9.2/mingw_64")
 
 # --- Buscar módulos de Qt necesarios ---
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Charts)
@@ -18,8 +18,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Charts)
 add_library(memory_profiler_lib STATIC
         library.cpp
         library.h
-        memtracker.cpp
-        memtracker.h
 )
 
 target_link_libraries(memory_profiler_lib

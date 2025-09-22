@@ -72,6 +72,7 @@ private:
     // --- Funciones auxiliares ---
     void incrementTime();
     void updateUIFromJson(const QJsonObject &json);
+    void updateLeaksTab(const QJsonArray &leaks);
 };
 
 #endif // MAINWINDOW_H

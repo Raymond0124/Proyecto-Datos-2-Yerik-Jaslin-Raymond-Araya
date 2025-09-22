@@ -1,4 +1,3 @@
-#include "memtracker.h"
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -7,50 +6,43 @@
 
 #include "library.h"
 
+// 👇 Esto hace que TODAS las llamadas a new incluyan file y line
+#define new new(__FILE__, __LINE__)
+
 int main() {
     // 1. Conectarse a la GUI
     connectToGui("127.0.0.1", 5000);
 
     // 2. Generar asignaciones variadas
-    int* a = new int;                 // 4 bytes (int)
-    double* b = new double[5];        // 40 bytes aprox
-    char* c = new char[20];           // 20 bytes
-    std::vector<int>* vec = new std::vector<int>(10, 42);
+    int* a = new int;                 // liberado más tarde
+    double* b = new double[5];        // liberado más tarde
+    char* c = new char[20];           // leak intencional (no se libera)
+    std::vector<int>* vec = new std::vector<int>(10, 42); // liberado
 
     // 3. Enviar estado a la GUI
     sendMemoryUpdate();
-
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // 4. Liberar algunas asignaciones
     delete a;
     delete[] b;
-    sendMemoryUpdate();
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    // 5. Generar más bloques
-    for (int i = 0; i < 5; i++) {
-        new int[100 + i * 50];  // bloques variados, algunos sin liberar para generar leaks
-    }
-
-    sendMemoryUpdate();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    // 6. Liberar vector
     delete vec;
+    // ⚠️ char* c no se libera → leak
+    sendMemoryUpdate();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // 5. Generar más fugas
+    int* leak1 = new int[100];    // leak
+    char* leak2 = new char[50];   // leak
     sendMemoryUpdate();
 
-    // 7. Generar leaks intencionales
-    char* leak1 = new char[30];
-    int* leak2 = new int[50];
-
-    sendMemoryUpdate();
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    // 8. Reportes finales por consola (opcional)
+    // 6. Reportes finales
     printMemoryReport();
-    printLeakReport();
+    printLeakReport(); // ✅ Ahora debe mostrar fugas (c, leak1, leak2)
+    sendLeakReport();
+
 
     // Mantener el programa vivo un poco para que GUI reciba datos
     std::this_thread::sleep_for(std::chrono::seconds(5));

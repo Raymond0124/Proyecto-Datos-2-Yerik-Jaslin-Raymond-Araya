@@ -1,8 +1,8 @@
 // main.cpp
 #include <QApplication>
 #include "mainwindow.h"
-#include "library.h"   // o "memtracker.h" según la librería que uses
-#include "memtracker.h"
+#include "library.h"
+
 
 int main(int argc, char *argv[])
 {

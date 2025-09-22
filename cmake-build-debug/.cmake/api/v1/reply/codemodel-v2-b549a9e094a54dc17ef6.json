@@ -1,0 +1,132 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "MemoryProfiler",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "memory_profiler_gui::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-memory_profiler_gui-Debug-7b37e1b939ada6153c15.json",
+					"name" : "memory_profiler_gui",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "memory_profiler_gui_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-memory_profiler_gui_autogen-Debug-80e39a2d2758ccf8a481.json",
+					"name" : "memory_profiler_gui_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "memory_profiler_gui_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-memory_profiler_gui_autogen_timestamp_deps-Debug-93f2cd7532ee9a493a94.json",
+					"name" : "memory_profiler_gui_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "memory_profiler_lib::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-memory_profiler_lib-Debug-97f674fdf28456b6ea0a.json",
+					"name" : "memory_profiler_lib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "memory_profiler_lib_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-memory_profiler_lib_autogen-Debug-b36b1839b15e1f370deb.json",
+					"name" : "memory_profiler_lib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "memory_profiler_lib_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-memory_profiler_lib_autogen_timestamp_deps-Debug-1bada888b967774e9bbf.json",
+					"name" : "memory_profiler_lib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_memory_profiler::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_memory_profiler-Debug-18a93d8d46321a0da1e7.json",
+					"name" : "test_memory_profiler",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_memory_profiler_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_memory_profiler_autogen-Debug-e971b8a778c9471bb3d8.json",
+					"name" : "test_memory_profiler_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_memory_profiler_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_memory_profiler_autogen_timestamp_deps-Debug-a3c93435a6df12c8a88f.json",
+					"name" : "test_memory_profiler_autogen_timestamp_deps",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug",
+		"source" : "C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 8
+	}
+}

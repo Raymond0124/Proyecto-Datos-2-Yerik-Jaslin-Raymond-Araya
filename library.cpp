@@ -3,9 +3,9 @@
 #include <cstdlib>
 #include <new>
 #include <QJsonArray>
-#include <QTcpSocket>
 #include <QJsonDocument>
 #include <thread>
+#include <filesystem>
 
 // Variables globales
 std::map<void*, AllocationInfo> allocations;
@@ -13,34 +13,36 @@ std::map<std::string, size_t> fileAllocCount;
 std::map<std::string, size_t> fileAllocBytes;
 std::mutex allocMutex;
 
-// ---------------- Sobrecarga de operadores ----------------
+// Variables de socket
+std::atomic<bool> socketConnected(false);
+QTcpSocket* clientSocket = nullptr;
+
+
+
+// -------- Sobrecarga de operadores --------
 void* operator new(size_t size, const char* file, int line) {
     void* ptr = malloc(size);
     if (!ptr) throw std::bad_alloc();
-
     {
         std::lock_guard<std::mutex> lock(allocMutex);
-        allocations[ptr] = AllocationInfo(size, file, line);
+        allocations[ptr] = AllocationInfo{size, file, line};
         fileAllocCount[file]++;
         fileAllocBytes[file] += size;
     }
-
-    sendMemoryStateToGUI();
+    sendMemoryUpdate();
     return ptr;
 }
 
 void* operator new[](size_t size, const char* file, int line) {
     void* ptr = malloc(size);
     if (!ptr) throw std::bad_alloc();
-
     {
         std::lock_guard<std::mutex> lock(allocMutex);
-        allocations[ptr] = AllocationInfo(size, file, line);
+        allocations[ptr] = AllocationInfo{size, file, line};
         fileAllocCount[file]++;
         fileAllocBytes[file] += size;
     }
-
-    sendMemoryStateToGUI();
+    sendMemoryUpdate();
     return ptr;
 }
 
@@ -51,7 +53,7 @@ void operator delete(void* ptr) noexcept {
         allocations.erase(ptr);
     }
     free(ptr);
-    sendMemoryStateToGUI();
+    sendMemoryUpdate();
 }
 
 void operator delete[](void* ptr) noexcept {
@@ -61,10 +63,35 @@ void operator delete[](void* ptr) noexcept {
         allocations.erase(ptr);
     }
     free(ptr);
-    sendMemoryStateToGUI();
+    sendMemoryUpdate();
 }
 
-// ---------------- Reportes ----------------
+
+
+// Para emparejar con operator new(size_t, const char*, int)
+void operator delete(void* ptr, const char* file, int line) noexcept {
+    if (!ptr) return;
+        {
+        std::lock_guard<std::mutex> lock(allocMutex);
+        allocations.erase(ptr);
+        }
+    free(ptr);
+}
+
+// Para emparejar con operator new[](size_t, const char*, int)
+void operator delete[](void* ptr, const char* file, int line) noexcept {
+    if (!ptr) return;
+    {
+        std::lock_guard<std::mutex> lock(allocMutex);
+        allocations.erase(ptr);
+    }
+    free(ptr);
+}
+
+
+
+
+// -------- Reportes --------
 void printMemoryReport() {
     std::cout << "\n=== Reporte de Asignaciones por Archivo ===\n";
     for (auto& [file, count] : fileAllocCount) {
@@ -74,71 +101,113 @@ void printMemoryReport() {
     }
 }
 
-void printLeakReport() {
-    size_t totalLeaks = 0;
-    size_t biggestLeak = 0;
-    std::string biggestLeakFile;
-    std::map<std::string, size_t> leaksByFile;
 
-    for (auto& [ptr, info] : allocations) {
-        totalLeaks += info.size;
-        leaksByFile[info.file] += info.size;
-        if (info.size > biggestLeak) {
-            biggestLeak = info.size;
-            biggestLeakFile = info.file;
-        }
+#include <iomanip>
+
+
+void printLeakReport(const std::string &pathFilter )
+{
+    std::lock_guard<std::mutex> lock(allocMutex);
+
+    if (allocations.empty()) {
+        std::cout << "[Leak Report] ✅ No se detectaron fugas de memoria.\n";
+        return;
     }
 
-    std::cout << "\n=== Reporte de Memory Leaks ===\n";
-    std::cout << "Total fugado: " << totalLeaks << " bytes\n";
-    std::cout << "Leak más grande: " << biggestLeak << " bytes en " << biggestLeakFile << "\n";
-
-    std::string worstFile;
-    size_t worstLeak = 0;
-    for (auto& [file, size] : leaksByFile) {
-        if (size > worstLeak) {
-            worstLeak = size;
-            worstFile = file;
+    // Agrupar por archivo (opcionalmente filtrado)
+    std::map<std::string, std::vector<std::pair<void*, AllocationInfo>>> byFile;
+    size_t totalLeaked = 0;
+    for (auto const &p : allocations) {
+        const void* ptr = p.first;
+        const AllocationInfo &info = p.second;
+        std::string file = info.file;
+        if (!pathFilter.empty() && file.find(pathFilter) == std::string::npos) {
+            // Si se especifica filtro, ignorar archivos que no contengan el filtro
+            continue;
         }
+        byFile[file].push_back({(void*)ptr, info});
+        totalLeaked += info.size;
     }
-    std::cout << "Archivo con más leaks: " << worstFile << " (" << worstLeak << " bytes)\n";
 
-    size_t totalAllocated = 0;
-    for (auto& [_, b] : fileAllocBytes) totalAllocated += b;
-    double leakRate = totalAllocated ? (double)totalLeaks / (double)totalAllocated : 0.0;
-    std::cout << "Tasa de leaks: " << leakRate * 100 << "%\n";
+    if (byFile.empty()) {
+        std::cout << "[Leak Report] (tras filtrar) ✅ No quedan fugas visibles.\n";
+        return;
+    }
+
+    std::cout << "\n[Leak Report] ❌ Se detectaron " << allocations.size() << " fugas ("
+              << totalLeaked << " bytes en total). Mostrando por archivo:\n\n";
+
+    for (auto &entry : byFile) {
+        const std::string &fullpath = entry.first;
+        std::string fname;
+        try {
+            fname = std::filesystem::path(fullpath).filename().string();
+        } catch (...) {
+            fname = fullpath; // fallback
+        }
+        std::cout << "Archivo: " << fname << " (ruta: " << fullpath << ")\n";
+        for (auto &pr : entry.second) {
+            void* addr = pr.first;
+            const AllocationInfo &info = pr.second;
+            std::cout << "  - Dirección: " << std::setw(14) << std::hex << std::showbase
+                      << (uintptr_t)addr << std::dec << std::noshowbase
+                      << " | Tamaño: " << info.size << " bytes"
+                      << " | Línea: " << info.line << "\n";
+        }
+        std::cout << "\n";
+    }
+
+    std::cout << "Total de memoria filtrada (reportada): " << totalLeaked << " bytes\n";
 }
 
-// ---------------- Exportar JSON ----------------
+void sendLeakReport() {
+    QJsonArray leaksArray;
+    {
+        std::lock_guard<std::mutex> lock(allocMutex);
+        for (const auto& [ptr, info] : allocations) {
+            QJsonObject leakObj;
+            leakObj["direccion"] = QString("0x%1").arg((quintptr)ptr, QT_POINTER_SIZE * 2, 16, QChar('0'));
+            leakObj["tamano"] = static_cast<int>(info.size);
+            leakObj["archivo"] = QString::fromStdString(info.file);
+            leakObj["linea"] = info.line;
+            leaksArray.append(leakObj);
+        }
+    }
+
+    QJsonObject root;
+    root["type"] = "leaks";   // 👈 para diferenciar en la GUI
+    root["data"] = leaksArray;
+
+    QJsonDocument doc(root);
+    QByteArray jsonData = doc.toJson(QJsonDocument::Compact);
+
+    if (clientSocket && clientSocket->state() == QAbstractSocket::ConnectedState) {
+        clientSocket->write(jsonData);
+        clientSocket->flush();
+    }
+}
+
+
+
+
+
+// -------- Exportar JSON --------
 QJsonObject exportMemoryState() {
     QJsonObject json;
-
     size_t memoriaActual = 0;
+
+    QJsonArray topArchivos;
+    QJsonArray bloques;
+
     {
         std::lock_guard<std::mutex> lock(allocMutex);
         for (auto& [_, info] : allocations) memoriaActual += info.size;
-    }
-
-    json["memoriaActual"] = static_cast<int>(memoriaActual / 1024); // KB
-    json["leaks"] = static_cast<int>(memoriaActual / 1024);
-
-    // Top archivos
-    QJsonArray topArchivos;
-    {
-        std::lock_guard<std::mutex> lock(allocMutex);
         for (auto& [file, bytes] : fileAllocBytes) {
             QJsonObject obj;
             obj["file"] = QString::fromStdString(file);
             obj["size"] = static_cast<int>(bytes);
             topArchivos.append(obj);
         }
-    }
-    json["topArchivos"] = topArchivos;
-
-    // Bloques
-    QJsonArray bloques;
-    {
-        std::lock_guard<std::mutex> lock(allocMutex);
         for (auto& [ptr, info] : allocations) {
             QJsonObject obj;
             obj["direccion"] = QString("0x%1").arg((quintptr)ptr, QT_POINTER_SIZE*2, 16, QLatin1Char('0'));
@@ -147,25 +216,34 @@ QJsonObject exportMemoryState() {
             bloques.append(obj);
         }
     }
-    json["bloques"] = bloques;
 
+    json["memoriaActual"] = static_cast<int>(memoriaActual);
+    json["leaks"] = static_cast<int>(memoriaActual);
+    json["topArchivos"] = topArchivos;
+    json["bloques"] = bloques;
     return json;
 }
 
-// ---------------- Enviar datos TCP ----------------
-void sendMemoryStateToGUI(const std::string &host, int port) {
-    QJsonObject json = exportMemoryState();
-    QJsonDocument doc(json);
-    QByteArray data = doc.toJson(QJsonDocument::Compact);
+// -------- Conexión GUI --------
+void connectToGui(const std::string &host, int port) {
+    if (!clientSocket) clientSocket = new QTcpSocket();
+    clientSocket->connectToHost(QString::fromStdString(host), port);
+    socketConnected = clientSocket->waitForConnected(3000);
+    if (!socketConnected) {
+        std::cerr << "No se pudo conectar al GUI\n";
+    }
+}
 
-    std::thread([data, host, port]() {
-        QTcpSocket socket;
-        socket.connectToHost(QString::fromStdString(host), port);
-        if (socket.waitForConnected(100)) {
-            socket.write(data);
-            socket.flush();
-            socket.waitForBytesWritten(100);
-            socket.disconnectFromHost();
+void sendMemoryUpdate() {
+    QJsonObject json = exportMemoryState();
+    json["type"] = "memory";  // 👈 diferencia
+
+    QByteArray data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    std::thread([data]() {
+        if (clientSocket && socketConnected) {
+            clientSocket->write(data);
+            clientSocket->flush();
         }
     }).detach();
 }
