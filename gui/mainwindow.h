@@ -18,7 +18,9 @@
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QJsonObject>
-
+#include <QJsonArray>
+#include <QByteArray>
+#include <QMap>
 
 class MainWindow : public QMainWindow
 {
@@ -47,12 +49,21 @@ private:
     QValueAxis *axisY;
     QListWidget *resumenList;
 
+    // --- Memory Tab ---
+    QTableWidget *memoryByFileTable;
+
     // --- Mapa de Memoria ---
     QTableWidget *memoriaTable;
+
+    // ✅ NUEVO: Mapa para almacenar detalles completos de cada bloque
+    QMap<QString, QJsonObject> blockDetailsMap;
 
     // --- Socket ---
     QTcpServer *server;
     QTcpSocket *clientSocket;
+
+    // Buffer de lectura (para manejar fragmentación TCP)
+    QByteArray readBuffer;
 
     // --- Timer ---
     QTimer *timeCounter;
@@ -66,6 +77,8 @@ private:
 
     // --- Socket ---
     void setupSocket();
+
+private slots:
     void newConnection();
     void readData();
 
@@ -73,6 +86,9 @@ private:
     void incrementTime();
     void updateUIFromJson(const QJsonObject &json);
     void updateLeaksTab(const QJsonArray &leaks);
+
+    // ✅ NUEVO: Slot para mostrar detalles del bloque
+    void showBlockDetails(int row);
 };
 
 #endif // MAINWINDOW_H

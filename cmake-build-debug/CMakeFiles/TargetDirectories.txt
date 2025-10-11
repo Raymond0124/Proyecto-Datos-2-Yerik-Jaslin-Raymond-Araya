@@ -1,11 +1,11 @@
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/memory_profiler_lib.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/memory_profiler_gui.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/test_memory_profiler.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/memory_profiler_lib_autogen_timestamp_deps.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/memory_profiler_lib_autogen.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/memory_profiler_gui_autogen_timestamp_deps.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/memory_profiler_gui_autogen.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/test_memory_profiler_autogen_timestamp_deps.dir
-C:/Users/ajasl/OneDrive/Documentos/Proyecto-Datos-2-Yerik-Jaslin-Raymond-Araya/cmake-build-debug/CMakeFiles/test_memory_profiler_autogen.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/memory_profiler_lib.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/memory_profiler_gui.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/test_memory_profiler.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/memory_profiler_lib_autogen_timestamp_deps.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/memory_profiler_lib_autogen.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/memory_profiler_gui_autogen_timestamp_deps.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/memory_profiler_gui_autogen.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/test_memory_profiler_autogen_timestamp_deps.dir
+C:/Users/raymo/CLionProjects/Proyecto Datos 2/cmake-build-debug/CMakeFiles/test_memory_profiler_autogen.dir

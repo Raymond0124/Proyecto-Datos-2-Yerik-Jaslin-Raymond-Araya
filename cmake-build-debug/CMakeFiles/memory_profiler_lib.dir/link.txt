@@ -1,2 +1,0 @@
-C:\PROGRA~1\JETBRA~1\CLION2~1.1\bin\mingw\bin\ar.exe qc libmemory_profiler_lib.a CMakeFiles/memory_profiler_lib.dir/memory_profiler_lib_autogen/mocs_compilation.cpp.obj CMakeFiles/memory_profiler_lib.dir/library.cpp.obj
-C:\PROGRA~1\JETBRA~1\CLION2~1.1\bin\mingw\bin\ranlib.exe libmemory_profiler_lib.a
